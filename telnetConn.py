@@ -41,8 +41,8 @@ def telnetConnection(host, username, password, number, inputText):
         command = f"{send_msg} {number} {inputText}"
         response = f"Send {inputText} to {number}"
         time.sleep(1) 
-        #tn.write(command.encode('ascii')+b"\n")
-        #tn.read_until(response.encode('ascii'), timeout = 5)
+        tn.write(command.encode('ascii')+b"\n")
+        tn.read_until(response.encode('ascii'), timeout = 5)
         ctypes.windll.user32.MessageBoxW(0, "Message to %s sent.\n"%(number), "oooohhhh booooyyyy", 1)
         tn.write(b"ls\n")
         tn.write(b"exit\n")
