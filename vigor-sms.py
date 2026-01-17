@@ -178,8 +178,8 @@ def on_read_sms(entries, output_box: tk.Text, unread_only_var: tk.IntVar):
             render_list("Read SMS", read)
 
         # helpful for debugging parsing / CLI differences
-        append_output(output_box, "\n--- Raw router output ---\n")
-        append_output(output_box, raw + "\n")
+        #append_output(output_box, "\n--- Raw router output ---\n")
+        #append_output(output_box, raw + "\n")
 
     except Exception as e:
         append_output(output_box, f"\nERROR: {e}\n")
