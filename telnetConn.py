@@ -1,9 +1,18 @@
+import os
 import sys
 import telnetlib
 import time
 import getpass
 import ctypes
 import socket
+
+def notify(title, msg):
+    # Windows popup
+    if os.name == "nt":
+        ctypes.windll.user32.MessageBoxW(0, msg, title, 1)
+    else:
+        # Linux/macOS: just print
+        print(f"{title}: {msg}")
 
 def shut_down_sockets(tn):
     tn.get_socket().shutdown(socket.SHUT_WR)
@@ -29,28 +38,28 @@ def telnetConnection(host, username, password, number, inputText):
             tn.read_until(b"Password: ", timeout = 5)
             tn.write(password.encode('ascii') + b"\n")
 
-        ctypes.windll.user32.MessageBoxW(0, "Login Successful.", "Aawwwyyyy yeah", 1)
+        notify("Aawwwyyyy yeah", "Login Successful.")
         #print("Login Successful.")
     except Exception as e:
         shut_down_sockets(tn)
-        ctypes.windll.user32.MessageBoxW(0, "Oh snap! %s happened"%(e.__class__,), "Error", 1)
+        notify("Error", "Oh snap! %s happened"%(e.__class__,))
     try:
         send_msg = "wan lte send"
-        ctypes.windll.user32.MessageBoxW(0, "Sending Message....", "BBBAAAZZZINNNGGAAAA", 1)
+        notify("BBBAAAZZZINNNGGAAAA", "Sending Message....")
         #print("Sending Message...\n")
         command = f"{send_msg} {number} {inputText}"
         response = f"Send {inputText} to {number}"
         time.sleep(1) 
         #tn.write(command.encode('ascii')+b"\n")
         #tn.read_until(response.encode('ascii'), timeout = 5)
-        ctypes.windll.user32.MessageBoxW(0, "Message to %s sent.\n"%(number), "oooohhhh booooyyyy", 1)
+        notify("oooohhhh booooyyyy", "Message to %s sent.\n"%(number))
         tn.write(b"ls\n")
         tn.write(b"exit\n")
-        ctypes.windll.user32.MessageBoxW(0, "Telnet connection closed", "NANANANANA BATMAN", 1)
+        notify("NANANANANA BATMAN", "Telnet connection closed")
         #print("Telnet connection closed\n")
     except Exception as e:
         shut_down_sockets(tn)
-        ctypes.windll.user32.MessageBoxW(0, "Oh snap! %s happened"%(e.__class__,), "Error", 1)
+        notify("Error", "Oh snap! %s happened"%(e.__class__,));
     
     # tn.write(b"ls\n")
     # tn.write(b"exit\n")
