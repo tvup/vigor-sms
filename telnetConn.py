@@ -1,59 +1,80 @@
-import sys
 import telnetlib
-import time
-import getpass
-import ctypes
 import socket
+from typing import List
 
 def shut_down_sockets(tn):
-    tn.get_socket().shutdown(socket.SHUT_WR)
-    data = tn.read_all().decode('ascii')
-    tn.close()
-
-def telnetConnection(host, username, password, number, inputText):
-
-
-    print('Connection started... \nHost: %s\nUsername: %s\nPassword: %s\nMessage: %s\nText %s'%(host, username, password, number, inputText))
-    HOST = host
-    user = username
-    password = password
-    tn = telnetlib.Telnet(HOST)
     try:
-        
+        tn.get_socket().shutdown(socket.SHUT_WR)
+    except Exception:
+        pass
+    try:
+        tn.close()
+    except Exception:
+        pass
 
-        print("Connection Established...")
+def _detect_prompt(tn: telnetlib.Telnet, timeout: int = 5) -> bytes:
+    """
+    Read until we see something that looks like a prompt on the last line.
+    We assume the prompt is the last line and typically ends with '>' or '#'.
+    """
+    buf = tn.read_until(b"\n", timeout=timeout)
+    buf += tn.read_very_eager()
 
-        tn.read_until(b"login: ", timeout = 5)
-        tn.write(user.encode('ascii') + b"\n")
+    for _ in range(10):
+        data = buf + tn.read_very_eager()
+        lines = data.splitlines()
+        if lines:
+            last = lines[-1].strip()
+            if last.endswith(b">") or last.endswith(b"#"):
+                return last
+        buf += tn.read_until(b"\n", timeout=timeout)
+
+    return b">"
+
+def telnetConnection(host, username, password, commands, timeout=5):
+    """
+    Generic telnet connection: login + run one or more commands + return output as text.
+    commands: list[str] or str
+    """
+    if isinstance(commands, str):
+        commands = [commands]
+
+    tn = None
+    try:
+        tn = telnetlib.Telnet(host)
+
+        tn.read_until(b"login: ", timeout=timeout)
+        tn.write(username.encode("ascii") + b"\n")
+
         if password:
-            tn.read_until(b"Password: ", timeout = 5)
-            tn.write(password.encode('ascii') + b"\n")
+            tn.read_until(b"Password: ", timeout=timeout)
+            tn.write(password.encode("ascii") + b"\n")
 
-        ctypes.windll.user32.MessageBoxW(0, "Login Successful.", "Aawwwyyyy yeah", 1)
-        #print("Login Successful.")
-    except Exception as e:
-        shut_down_sockets(tn)
-        ctypes.windll.user32.MessageBoxW(0, "Oh snap! %s happened"%(e.__class__,), "Error", 1)
-    try:
-        send_msg = "wan lte send"
-        ctypes.windll.user32.MessageBoxW(0, "Sending Message....", "BBBAAAZZZINNNGGAAAA", 1)
-        #print("Sending Message...\n")
-        command = f"{send_msg} {number} {inputText}"
-        response = f"Send {inputText} to {number}"
-        time.sleep(1) 
-        #tn.write(command.encode('ascii')+b"\n")
-        #tn.read_until(response.encode('ascii'), timeout = 5)
-        ctypes.windll.user32.MessageBoxW(0, "Message to %s sent.\n"%(number), "oooohhhh booooyyyy", 1)
-        tn.write(b"ls\n")
+        prompt = _detect_prompt(tn, timeout=timeout)
+
+        out_parts: List[str] = []
+
+        for cmd in commands:
+            tn.write(cmd.encode("ascii") + b"\n")
+            chunk = tn.read_until(prompt, timeout=timeout)
+            out_parts.append(chunk.decode("ascii", errors="ignore"))
+
         tn.write(b"exit\n")
-        ctypes.windll.user32.MessageBoxW(0, "Telnet connection closed", "NANANANANA BATMAN", 1)
-        #print("Telnet connection closed\n")
-    except Exception as e:
-        shut_down_sockets(tn)
-        ctypes.windll.user32.MessageBoxW(0, "Oh snap! %s happened"%(e.__class__,), "Error", 1)
-    
-    # tn.write(b"ls\n")
-    # tn.write(b"exit\n")
+        out_parts.append(tn.read_all().decode("ascii", errors="ignore"))
 
-    # print(tn.read_all().decode('ascii'))
+        return "".join(out_parts)
+
+    except Exception:
+        if tn:
+            shut_down_sockets(tn)
+        raise
+
+def send_sms(host: str, username: str, password: str, number: str, text: str) -> str:
+    safe = text.replace('"', '\\"')
+    cmd = f'wan lte send {number} "{safe}"'
+    return telnetConnection(host, username, password, cmd)
+
+
+def read_sms_all(host: str, username: str, password: str) -> str:
+    return telnetConnection(host, username, password, "wan lte read all")
 
